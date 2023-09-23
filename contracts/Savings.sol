@@ -9,10 +9,10 @@ contract Savings is AutomationCompatible {
         address indexed savings,
         address tokenIn,
         uint256 amountIn,
-        uint256[] amountsOut
+        OutgoingToken[] outgoingTokens
     );
 
-    // Goerli token addresses for testing[["0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", 20], ["0x07865c6E87B9F70255377e024ace6630C1Eaa37F", 80]]
+    // Goerli token addresses for testing [["0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", 20], ["0x07865c6E87B9F70255377e024ace6630C1Eaa37F", 80]]
     // address public constant UNI = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984;
     // address public constant USDC = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
     // address public constant LINK = 0x326C977E6efc84E512bB9C30f76E30c160eD06FB;
@@ -20,6 +20,11 @@ contract Savings is AutomationCompatible {
     struct TokenDistribution {
         address token;
         uint8 distribution;
+    }
+
+    struct OutgoingToken {
+        address token;
+        uint256 amount;
     }
 
     address public immutable owner;
@@ -70,7 +75,9 @@ contract Savings is AutomationCompatible {
     function performUpkeep(bytes calldata performData) external override {
         address whitelistToken = abi.decode(performData, (address));
         uint256 balance = address(this).balance;
-        uint256[] memory amounts = new uint256[](tokenDistribution.length);
+        OutgoingToken[] memory outgoingTokens = new OutgoingToken[](
+            tokenDistribution.length
+        );
 
         //We highly recommend revalidating the upkeep in the performUpkeep function
         if (address(this).balance > 0) {
@@ -80,18 +87,27 @@ contract Savings is AutomationCompatible {
                 if (tokenDistribution[x].token == address(0)) {
                     (bool sent, ) = owner.call{value: amount}("");
                     require(sent, "Failed to send ether");
-                    amounts[x] = amount;
-                } else {
-                    amounts[x] = swapProxy.swapExactInputSingle{value: amount}(
-                        amount,
-                        WETH,
+                    outgoingTokens[x] = OutgoingToken(
                         tokenDistribution[x].token,
-                        owner
+                        amount
+                    );
+                } else {
+                    uint256 amountOut = swapProxy.swapExactInputSingle{
+                        value: amount
+                    }(amount, WETH, tokenDistribution[x].token, owner);
+                    outgoingTokens[x] = OutgoingToken(
+                        tokenDistribution[x].token,
+                        amountOut
                     );
                 }
             }
 
-            emit ReceivedFunds(address(this), whitelistToken, balance, amounts);
+            emit ReceivedFunds(
+                address(this),
+                whitelistToken,
+                balance,
+                outgoingTokens
+            );
             // for (int x = 0; x < tokenDistribution.length; x++) {
 
             // }
