@@ -23,7 +23,7 @@ contract Swap {
     function swapExactInputSingle(uint256 amountIn, address tokenIn, address tokenOut, address recipient) external payable returns (uint256 amountOut) {
         // msg.sender must approve this contract
 
-        if (msg.value > 0) {
+        if (msg.value == 0) {
             // Transfer the specified amount of DAI to this contract.
             TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
 
@@ -38,17 +38,17 @@ contract Swap {
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
                 fee: poolFee,
-                recipient: msg.sender,
+                recipient: recipient,
                 deadline: block.timestamp,
                 amountIn: amountIn,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
             });
 
-        if (msg.value > 0) {
-            amountOut = swapRouter.exactInputSingle{value:msg.value}(params);
-        } else {
+        if (msg.value == 0) {
             amountOut = swapRouter.exactInputSingle(params);
+        } else {
+            amountOut = swapRouter.exactInputSingle{value:msg.value}(params);
         }
     }
 }
