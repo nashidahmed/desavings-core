@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
+import "./ISwapProxy.sol";
 
 contract Savings is AutomationCompatible {
 
@@ -11,6 +12,9 @@ contract Savings is AutomationCompatible {
     }
 
     address public immutable owner;
+    ISwapProxy swapProxy;
+    address public constant WETH = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;     
+
     address[] public whitelistTokens;
     TokenDistribution[] tokenDistribution;
 
@@ -19,8 +23,9 @@ contract Savings is AutomationCompatible {
       _;
     }
 
-    constructor(address[] memory _whitelistTokens, TokenDistribution[] memory _tokenDistribution) {
+    constructor(ISwapProxy _swapProxy, address[] memory _whitelistTokens, TokenDistribution[] memory _tokenDistribution) {
       owner = msg.sender;
+      swapRouter = _swapRouter;
       whitelistTokens = _whitelistTokens;
 
       for (uint256 x = 0; x < _tokenDistribution.length; x++) {
@@ -46,12 +51,13 @@ contract Savings is AutomationCompatible {
         //We highly recommend revalidating the upkeep in the performUpkeep function
         if (address(this).balance > 0) {
           for (uint256 x = 0; x < tokenDistribution.length; x++) {
+            uint256 amount = balance * tokenDistribution[x].amount / 100;
             if (tokenDistribution[x].token == address(0)) {
               (bool sent, ) = owner.call{value: amount}("");
               require(sent, "Failed to send ether");
             }
             else {
-              // Swap token
+              swapProxy.swapExactInputSingle{value: amount}(amount, WETH, tokenDistribution[x].token, owner);
             }
           }
           // for (int x = 0; x < tokenDistribution.length; x++) {
