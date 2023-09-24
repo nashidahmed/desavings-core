@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ISwapProxy.sol";
 
 contract Savings is AutomationCompatible {
@@ -67,24 +68,39 @@ contract Savings is AutomationCompatible {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        upkeepNeeded = address(this).balance > 0;
-        return (upkeepNeeded, "");
+        if (address(this).balance > 0) {
+            return (true, "");
+        } else {
+            for (uint x = 0; x < whitelistTokens.length; x++) {
+                if (IERC20(whitelistTokens[x]).balanceOf(address(this)) > 0) {
+                    performData = abi.encode(whitelistTokens[x]);
+                    return (true, performData);
+                }
+            }
+        }
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        address whitelistToken = abi.decode(performData, (address));
+        address whitelistToken;
         uint256 balance = address(this).balance;
         OutgoingToken[] memory outgoingTokens = new OutgoingToken[](
             tokenDistribution.length
         );
+
+        if (performData.length != 0) {
+            (whitelistToken) = abi.decode(performData, (address));
+        }
 
         //We highly recommend revalidating the upkeep in the performUpkeep function
         if (address(this).balance > 0) {
             for (uint256 x = 0; x < tokenDistribution.length; x++) {
                 uint256 amount = (balance * tokenDistribution[x].distribution) /
                     100;
-                if (tokenDistribution[x].token == address(0)) {
+                if (
+                    tokenDistribution[x].token == address(0) ||
+                    tokenDistribution[x].token == WETH
+                ) {
                     (bool sent, ) = owner.call{value: amount}("");
                     require(sent, "Failed to send ether");
                     outgoingTokens[x] = OutgoingToken(
@@ -104,7 +120,7 @@ contract Savings is AutomationCompatible {
 
             emit ReceivedFunds(
                 address(this),
-                whitelistToken,
+                address(0),
                 balance,
                 outgoingTokens
             );
