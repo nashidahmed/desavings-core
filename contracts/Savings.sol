@@ -190,6 +190,11 @@ contract Savings is AutomationCompatible {
         require(sent, "Failed to send ether");
     }
 
+    function emergencyWithdrawToken(address token) external {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        IERC20(token).transfer(owner, balance);
+    }
+
     fallback() external payable {}
 
     receive() external payable {}
