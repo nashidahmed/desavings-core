@@ -135,7 +135,10 @@ contract Savings is AutomationCompatible {
                     IERC20(whitelistToken).transfer(owner, amount);
                     outgoingTokens[x] = OutgoingToken(whitelistToken, amount);
                 } else {
-                    if (tokenDistribution[x].token == WETH) {
+                    if (
+                        tokenDistribution[x].token == address(0) ||
+                        tokenDistribution[x].token == WETH
+                    ) {
                         IERC20(whitelistToken).approve(
                             address(swapProxy),
                             amount
@@ -147,6 +150,8 @@ contract Savings is AutomationCompatible {
                             address(this)
                         );
                         IWETH9(WETH).withdraw(amountOut);
+                        (bool sent, ) = owner.call{value: amountOut}("");
+                        require(sent, "Failed to send ether");
                         outgoingTokens[x] = OutgoingToken(
                             tokenDistribution[x].token,
                             amountOut
