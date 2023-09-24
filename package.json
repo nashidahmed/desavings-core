@@ -1,3 +1,15 @@
 {
-  "name": "hardhat-project"
+  "name": "hardhat-project",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:nashidahmed/desavings-core.git",
+  "author": "Nashid Shah <nashid.ahmed.115@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@chainlink/contracts": "^0.7.1",
+    "@uniswap/v3-periphery": "^1.4.3"
+  },
+  "devDependencies": {
+    "hardhat": "^2.17.3"
+  }
 }
